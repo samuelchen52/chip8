@@ -10,7 +10,7 @@ var memory = emptyArr(4096); //one byte each
 var register = emptyArr(16); //one byte each
 
 var I = 0; //12 bits
-var pc = 0x200; //12 bits
+var pc = 0x200; //12 bits 0x200 - 0x1000
 
 //pixels are XORed
 var pixels = emptyArr(64 * 32); //1 bit each, if collision detected, set VF register
@@ -69,7 +69,6 @@ var initEventHandlers = function()
 	}
 }
 
-initEventHandlers();
 //clears and returns screen
 var initGraphics = function()
 {
@@ -95,7 +94,7 @@ var loadFontset = function()
 
 var waitFile = function() //waits for file input (chip8 rom)
 {
-	return new Promise(resolve, reject)
+	return new Promise(function (resolve, reject)
 	{
 		var fileInput = document.getElementById('fileInput');
 
@@ -109,7 +108,7 @@ var waitFile = function() //waits for file input (chip8 rom)
 			  }
             reader.readAsBinaryString(file);
         });
-	}
+	});
 };
 
 var render = function(x, y, address, bytes) //draws bytes bytes to canvas, from address address in memory, at x and y
@@ -314,6 +313,7 @@ var parseInstruction = function(instruction) //instruction is 2 bytes, or 4 hexa
 
 var executeInstruction = async function (instruction, opcode, callback)
 {
+	console.log(opcode);
 	let X = (instruction & 0x0F00) >> 8; //second hex digit
 	let Y = (instruction & 0x00F0) >> 4; //third hex digit
 
@@ -362,8 +362,13 @@ var executeInstruction = async function (instruction, opcode, callback)
 		case 6: //4XNN skips the next instruction if VX does not equal NN
 		if (register[X] != (instruction & 0x00FF))
 		{
+			//alert("yeah");
 			pc += 2;
 		}
+		// console.log(register[X]);
+		// console.log(instruction);
+		 console.log(register[X] != (instruction & 0x00FF));
+		alert("uh huh");
 		pc += 2;
 		break;
 		
@@ -469,7 +474,7 @@ var executeInstruction = async function (instruction, opcode, callback)
 		break;
 		
 		case 23: //DXYN Draws a sprite at coordinate (VX, VY) that has a width of 8 pixels and a height of N pixels.
-		render(register[X], register[Y], i, instruction & 0x000F);
+		render(register[X], register[Y], I, instruction & 0x000F);
 		pc += 2;
 		break;
 		
@@ -559,7 +564,11 @@ var executeInstruction = async function (instruction, opcode, callback)
 		}
 		pc += 2;
 		break;
-		
+	}
+
+	if (typeof(callback) === "function")
+	{
+		callback();
 	}
 }
 
@@ -568,12 +577,48 @@ var loadProgram = function()
 	//start loading at memory address 0x200 == 512
 	for (let i = 0; i < buffer.length; i ++)
 	{
-		memory[0x200 + i] = buffer[i];
+		memory[0x200 + i] = buffer[i].charCodeAt(0);
 	}
+	console.log(memory);
 }
 
-var start
+var startProgram = async function ()
+{
+	initEventHandlers();
+	initGraphics();
+	initVariables();
+	loadFontset()
+	await waitFile();
+	loadProgram();
 
+	while((pc >= 0x200) && (pc <= 0x1000) && (pc % 2 == 0)) //valid pc values
+	{
+		let instruction = (memory[pc] << 8) ^ (memory[pc + 1]);
+		let opcode = parseInstruction(instruction);
+		// console.log("___________");
+		// console.log(instruction)
+		// console.log(opcode);
+		// console.log(pc)
+		// console.log("___________");
+		if (opcode == -1)
+		{
+			alert("syntax error!");
+		}
+		await new Promise(function(resolve, reject)
+		{
+			executeInstruction(instruction, opcode, resolve);
+		});
+		soundTimer = soundTimer == 0 ? 60 : soundTimer - 1;
+		delayTimer = delayTimer == 0 ? 60 : delayTimer - 1;
+		await new Promise(function(resolve, reject)
+		{
+			setTimeout(resolve, 50);
+		});
+	}
+
+}
+
+startProgram();
 
 // console.log(parseOpcode(0x0000));
 // console.log(parseOpcode(0x00E0));
