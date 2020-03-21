@@ -1,6 +1,6 @@
 var emptyArr = function (size)
 {
-	return new Array(size).map(()=>0);
+	return new Array(size).fill(0);
 }
 
 var opcode = 0; //two bytes
@@ -56,6 +56,7 @@ var initEventHandlers = function()
 		if (!isNaN(key))
 		{
 			keys[key] = 1;
+			console.log(keys);
 		}
 		callback(e);
 	}
@@ -314,7 +315,7 @@ var parseInstruction = function(instruction) //instruction is 2 bytes, or 4 hexa
 var executeInstruction = async function (instruction, opcode, callback)
 {
 	//console.log(pc);
-	console.log(opcode);
+	//console.log(opcode);
 	let X = (instruction & 0x0F00) >> 8; //second hex digit
 	let Y = (instruction & 0x00F0) >> 4; //third hex digit
 
@@ -446,7 +447,7 @@ var executeInstruction = async function (instruction, opcode, callback)
 		case 19: //9XY0 skips next instruction if VX != VY
 		if (register[X] != register[Y])
 		{
-
+			pc += 2;
 		}
 		break;
 		
@@ -474,7 +475,7 @@ var executeInstruction = async function (instruction, opcode, callback)
 		break;
 		
 		case 25: //EXA1 Skips the next instruction if the key stored in VX isn't pressed
-		if (keys[register[X]] == 0)
+		if (!keys[register[X]])
 		{
 			pc += 2;
 		}
@@ -487,6 +488,7 @@ var executeInstruction = async function (instruction, opcode, callback)
 		case 27: //FX0A A key press is awaited, and then stored in VX.
 		await new Promise(resolve, reject)
 		{
+			alert("HELLO");
 			callback = function(e)
 			{
 				let key = parseInt(e.key, 16);
@@ -591,11 +593,11 @@ var startProgram = async function ()
 		{
 			executeInstruction(instruction, opcode, resolve);
 		});
-		soundTimer = soundTimer == 0 ? 60 : soundTimer - 1;
-		delayTimer = delayTimer == 0 ? 60 : delayTimer - 1;
+		soundTimer = soundTimer == 0 ? soundTimer - 1 : 0;
+		delayTimer = delayTimer == 0 ? delayTimer - 1 : 0;
 		await new Promise(function(resolve, reject)
 		{
-			setTimeout(resolve, 50);
+			setTimeout(resolve, 2);
 		});
 		//console.log(pc);
 	}
