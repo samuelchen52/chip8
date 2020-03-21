@@ -129,7 +129,7 @@ var render = function(x, y, address, bytes) //draws bytes bytes to canvas, from 
 			pixels[x + p + ((y + i) * 64)] = currentPixel ^ newPixel;
 			
 
-			flag |= (newPixel == 1) && (currentPixel == 1)
+			flag |= ((newPixel == 1) && (currentPixel == 1))
 		} 
 	}
 	register[0xF] = flag ? 1 : 0;
@@ -260,7 +260,7 @@ var parseInstruction = function(instruction) //instruction is 2 bytes, or 4 hexa
 		break;
 
 		case 15: //0xF
-		switch(0x00ff & instruction)
+		switch(0x00FF & instruction)
 		{
 			case 0x07:
 			return 26;
@@ -313,6 +313,7 @@ var parseInstruction = function(instruction) //instruction is 2 bytes, or 4 hexa
 
 var executeInstruction = async function (instruction, opcode, callback)
 {
+	//console.log(pc);
 	console.log(opcode);
 	let X = (instruction & 0x0F00) >> 8; //second hex digit
 	let Y = (instruction & 0x00F0) >> 4; //third hex digit
@@ -320,13 +321,11 @@ var executeInstruction = async function (instruction, opcode, callback)
 	switch(opcode)
 	{
 		case 0: //0NNN not really needed
-		pc += 2;
 		break;
 
 		case 1: //00E0 clear screen
 		screen.fillStyle = "#000000"
 		screen.fillRect(0,0,64,32);
-		pc += 2;
 		break;
 		
 		case 2: //00EE return from subroutine
@@ -338,6 +337,7 @@ var executeInstruction = async function (instruction, opcode, callback)
 		{
 			sp --;
 			pc = stack[sp];
+
 		}
 		break;
 		
@@ -356,7 +356,6 @@ var executeInstruction = async function (instruction, opcode, callback)
 		{
 			pc += 2;
 		}
-		pc += 2;
 		break;
 		
 		case 6: //4XNN skips the next instruction if VX does not equal NN
@@ -367,9 +366,12 @@ var executeInstruction = async function (instruction, opcode, callback)
 		}
 		// console.log(register[X]);
 		// console.log(instruction);
-		 console.log(register[X] != (instruction & 0x00FF));
-		alert("uh huh");
-		pc += 2;
+		console.log("regx");
+		console.log(X);
+		console.log(register[X]);
+		console.log(instruction);
+		console.log(register[X] != (instruction & 0x00FF));
+		//alert("uh huh");
 		break;
 		
 		case 7: //5XNN skips the next instruction if VX equals VY
@@ -377,23 +379,19 @@ var executeInstruction = async function (instruction, opcode, callback)
 		{
 			pc += 2;
 		}
-		pc += 2;
 		break;
 		
 		case 8: //6XNN sets VX to NN
 		register[X] = instruction & 0x00FF;
-		pc += 2;
 		break;
 		
 		case 9: //7XNN adds NN to VX, extra bits will be truncated (to 1 byte)
 		register[X] += instruction & 0x00FF;
 		register[X] &= 0x00FF;
-		pc += 2;
 		break;
 		
 		case 10: //8XY0 sets VX to the value of VY
 		register[X] = register[Y];
-		pc += 2;
 		break;
 		
 		case 11: //8XY1 sets VX to VX | VY
@@ -403,12 +401,10 @@ var executeInstruction = async function (instruction, opcode, callback)
 		
 		case 12: //8XY2 sets VX to VX & VY
 		register[X] &= register[Y];
-		pc += 2;
 		break;
 		
 		case 13: //8XY3 sets VX to VX ^ VY
 		register[X] ^= register[Y];
-		pc += 2;
 		break;
 		
 		case 14: //8XY4 adds VY to VX
@@ -428,40 +424,34 @@ var executeInstruction = async function (instruction, opcode, callback)
 		register[0xF] = register[X] < register[Y] ? 0 : 1;
 		register[X] += (256 - register[Y]);
 		register[X] &= 0x00FF;
-		pc += 2;
 		break;
 		
 		case 16: //8XY6 stores the least siginificant bit of VX in VF then shifts VX to the right by 1
 		register[0xF] = register[X] & 1;
 		register[X] >>= 1;
-		pc += 2;
 		break;
 		
 		case 17: //8XY7 subtracts VX from VY, VS set to 0 when borrow occurs
 		register[0xF] = register[Y] < register[X] ? 0 : 1;
 		register[X] = register[Y] + (256 - register[X]);
 		register[X] &= 0x00FF;
-		pc += 2;
 		break;
 		
 		case 18: //8XYE stores the most significant bit of VX in VF then shifts VX to the left by 1
 		register[0xF] = register[X] & 128;
 		register[X] <<= 1;
 		register[X] &= 0x00FF;
-		pc += 2;
 		break;
 		
 		case 19: //9XY0 skips next instruction if VX != VY
 		if (register[X] != register[Y])
 		{
-			pc += 2;
+
 		}
-		pc += 2;
 		break;
 		
 		case 20: //ANNN sets I to the address NNN
 		I = instruction & 0x0FFF;
-		pc += 2;
 		break;
 		
 		case 21: //BNNN jumps to address NNN + V0
@@ -470,12 +460,10 @@ var executeInstruction = async function (instruction, opcode, callback)
 		
 		case 22: //CXNN Sets VX to the result of a bitwise and operation on a random number (Typically: 0 to 255) and NN
 		register[X] = (0x00FF & instruction) & Math.floor(Math.random() * 256);
-		pc += 2;
 		break;
 		
 		case 23: //DXYN Draws a sprite at coordinate (VX, VY) that has a width of 8 pixels and a height of N pixels.
 		render(register[X], register[Y], I, instruction & 0x000F);
-		pc += 2;
 		break;
 		
 		case 24: //EX9E Skips the next instruction if the key stored in VX is pressed
@@ -483,7 +471,6 @@ var executeInstruction = async function (instruction, opcode, callback)
 		{
 			pc += 2;
 		}
-		pc += 2;
 		break;
 		
 		case 25: //EXA1 Skips the next instruction if the key stored in VX isn't pressed
@@ -491,12 +478,10 @@ var executeInstruction = async function (instruction, opcode, callback)
 		{
 			pc += 2;
 		}
-		pc += 2;
 		break;
 		
 		case 26: //FX07 sts VX to the value of the delay timer
 		register[X] = delayTimer;
-		pc += 2;
 		break;
 		
 		case 27: //FX0A A key press is awaited, and then stored in VX.
@@ -513,24 +498,20 @@ var executeInstruction = async function (instruction, opcode, callback)
 				}
 			}
 		}
-		pc += 2;
 		break;
 		
 		case 28: //FX15 sets the delay timer to VX
 		delayTimer = register[X];
-		pc += 2;
 		break;
 		
 		case 29: //FX18 sets the sound timer to VX
 		soundTimer = register[X];
-		pc += 2;
 		break;
 		
 		case 30: //FX1E adds VX to I, VF set to 1 if VX + I > 0xFFF, else 0
 		I += register[X];
 		register[0xF] = I > 0xFFF ? 1 : 0;
 		I &= 0xFFF;
-		pc++;
 		break;
 		
 		case 31: //FX29 Sets I to the location of the sprite for the character in VX
@@ -538,31 +519,32 @@ var executeInstruction = async function (instruction, opcode, callback)
 		{
 			I = 5 * register[X];
 		}
-		pc += 2;
 		break;
 		
 		case 32: //FX33 Stores the binary-coded decimal representation of VX, with the most significant of three digits at the address in I, the middle digit at I plus 1, and the least significant digit at I plus 2
 		let BCD = register[X].toString(10);
-		memory[I] = BCD[0];
-		memory[I + 1] = BCD[1];
-		memory[I + 2] = BCD[2];
-		pc += 2;
+		// alert(register[X]);
+		// alert(BCD);
+		// alert(BCD[0]);
+		// alert(BCD[1]);
+		// alert(BCD[2]);
+		memory[I] = parseInt(BCD[0]);
+		memory[I + 1] = parseInt(BCD[1]);
+		memory[I + 2] = parseInt(BCD[2]);
 		break;
 		
 		case 33: //FX55 Stores V0 to VX (including VX) in memory starting at address I. The offset from I is increased by 1 for each value written, but I itself is left unmodified
-		for (let i = 0; i <= 0xF; i++)
+		for (let i = 0; i <= X; i++)
 		{
 			memory[I + i] = register[i];
 		}
-		pc += 2;
 		break;
 		
 		case 34: //FX65 Fills V0 to VX (including VX) with values from memory starting at address I. The offset from I is increased by 1 for each value written, but I itself is left unmodified
-		for (let i = 0; i <= 0xF; i++)
+		for (let i = 0; i <= X; i++)
 		{
 			register[i] = memory[I + i];
 		}
-		pc += 2;
 		break;
 	}
 
@@ -593,7 +575,7 @@ var startProgram = async function ()
 
 	while((pc >= 0x200) && (pc <= 0x1000) && (pc % 2 == 0)) //valid pc values
 	{
-		let instruction = (memory[pc] << 8) ^ (memory[pc + 1]);
+		let instruction = (memory[pc] << 8) ^ memory[pc + 1];
 		let opcode = parseInstruction(instruction);
 		// console.log("___________");
 		// console.log(instruction)
@@ -602,8 +584,9 @@ var startProgram = async function ()
 		// console.log("___________");
 		if (opcode == -1)
 		{
-			alert("syntax error!");
+			alert("unidentified opcode!");
 		}
+		pc += 2;
 		await new Promise(function(resolve, reject)
 		{
 			executeInstruction(instruction, opcode, resolve);
@@ -614,6 +597,7 @@ var startProgram = async function ()
 		{
 			setTimeout(resolve, 50);
 		});
+		//console.log(pc);
 	}
 
 }
