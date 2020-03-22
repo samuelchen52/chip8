@@ -14,7 +14,10 @@ var pc = 0x200; //12 bits 0x200 - 0x1000
 
 //pixels are XORed
 var pixels = emptyArr(64 * 32); //1 bit each, if collision detected, set VF register
+var screenSize = {x : 5, y : 5} //factors for screen size
 var screen = document.getElementById("screen").getContext("2d");
+screen.canvas.width  = screenSize.x * 64;
+screen.canvas.height = screenSize.y * 32;	
 
 var delayTimer = 0; //60hz
 var soundTimer = 0; //60hz
@@ -47,7 +50,6 @@ var fontset =
 //will be used to await a key press
 var callback = function (){};
 
-
 var initEventHandlers = function()
 {
 	window.onkeydown = function(e)
@@ -73,7 +75,7 @@ var initEventHandlers = function()
 var initGraphics = function()
 {
 	screen.fillStyle = "black";
-	screen.fillRect(0, 0, 64, 32);
+	screen.fillRect(0, 0, 64 * screenSize.x, 32 * screenSize.y);
 };
 
 var initVariables = function()
@@ -125,7 +127,7 @@ var render = function(x, y, address, bytes) //draws bytes bytes to canvas, from 
 			let newPixel = parseInt(byte[p]);
 
 			screen.fillStyle = ((currentPixel ^ newPixel) == 1) ? "white" : "black";
-			screen.fillRect(x + p, y + i, 1, 1);
+			screen.fillRect((x + p) * screenSize.x, (y + i) * screenSize.y, screenSize.x, screenSize.y);
 			pixels[x + p + ((y + i) * 64)] = currentPixel ^ newPixel;
 			
 
@@ -313,9 +315,8 @@ var parseInstruction = function(instruction) //instruction is 2 bytes, or 4 hexa
 
 var executeInstruction = async function (instruction, opcode, callback)
 {
-	console.log(pc);
+	//console.log(pc);
 	//console.log(opcode);
-	console.log("EXECUTING OP:" + opcode);
 	let X = (instruction & 0x0F00) >> 8; //second hex digit
 	let Y = (instruction & 0x00F0) >> 4; //third hex digit
 
@@ -326,7 +327,7 @@ var executeInstruction = async function (instruction, opcode, callback)
 
 		case 1: //00E0 clear screen
 		screen.fillStyle = "#000000"
-		screen.fillRect(0,0,64,32);
+		screen.fillRect(0,0,64 * screenSize.x,32 * screenSize.y);
 		break;
 		
 		case 2: //00EE return from subroutine
@@ -417,7 +418,7 @@ var executeInstruction = async function (instruction, opcode, callback)
 		register[X] &= 0x00FF;
 		break;
 		
-		case 16: //8XY6 stores the least siginificant bit of VX in VF then shifts VX to the right by 1
+		case 16: //8XY6 stores the least significant bit of VX in VF then shifts VX to the right by 1
 		register[0xF] = register[X] & 1;
 		register[X] >>= 1;
 		break;
@@ -465,7 +466,7 @@ var executeInstruction = async function (instruction, opcode, callback)
 		break;
 		
 		case 25: //EXA1 Skips the next instruction if the key stored in VX isn't pressed
-		if (keys[register[X]] == 0)
+		if (!keys[register[X]])
 		{
 			pc += 2;
 		}
@@ -510,15 +511,21 @@ var executeInstruction = async function (instruction, opcode, callback)
 		{
 			I = 5 * register[X];
 		}
+		// console.log("___________");
+		// console.log("register " + X + ": " + register[X]);
+		// console.log("register " + Y + ": " + register[Y]);
+		// console.log("address: " + I);
+		// console.log("___________");
 		break;
 		
 		case 32: //FX33 Stores the binary-coded decimal representation of VX, with the most significant of three digits at the address in I, the middle digit at I plus 1, and the least significant digit at I plus 2
-		let BCD = register[X].toString(10);
-		// alert(register[X]);
-		// alert(BCD);
-		// alert(BCD[0]);
-		// alert(BCD[1]);
-		// alert(BCD[2]);
+		let BCD = "000" + register[X].toString(10);
+		BCD = BCD.substring(BCD.length - 3);
+		// console.log(register[X]);
+		// console.log(BCD);
+		// console.log(BCD[0]);
+		// console.log(BCD[1]);
+		// console.log(BCD[2]);
 		memory[I] = parseInt(BCD[0]);
 		memory[I + 1] = parseInt(BCD[1]);
 		memory[I + 2] = parseInt(BCD[2]);
@@ -534,6 +541,7 @@ var executeInstruction = async function (instruction, opcode, callback)
 		case 34: //FX65 Fills V0 to VX (including VX) with values from memory starting at address I. The offset from I is increased by 1 for each value written, but I itself is left unmodified
 		for (let i = 0; i <= X; i++)
 		{
+			console.log(register[i]);
 			register[i] = memory[I + i];
 		}
 		break;
@@ -568,6 +576,8 @@ var startProgram = async function ()
 	{
 		let instruction = (memory[pc] << 8) | memory[pc + 1];
 		let opcode = parseInstruction(instruction);
+		console.log("0x" + pc.toString(16) + " op:" + opcode);
+		console.log(register);
 		// console.log("___________");
 		// console.log(instruction)
 		// console.log(opcode);
@@ -582,11 +592,11 @@ var startProgram = async function ()
 		{
 			executeInstruction(instruction, opcode, resolve);
 		});
-		soundTimer = soundTimer == 0 ? soundTimer - 1 : 0;
-		delayTimer = delayTimer == 0 ? delayTimer - 1 : 0;
+		soundTimer = soundTimer > 0 ? soundTimer - 1 : 0;
+		delayTimer = delayTimer > 0 ? delayTimer - 1 : 0;
 		await new Promise(function(resolve, reject)
 		{
-			setTimeout(resolve, 1000/60);
+			setTimeout(resolve, 500);
 		});
 		//console.log(pc);
 	}
