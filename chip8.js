@@ -576,8 +576,8 @@ var startProgram = async function ()
 	{
 		let instruction = (memory[pc] << 8) | memory[pc + 1];
 		let opcode = parseInstruction(instruction);
-		console.log("0x" + pc.toString(16) + " op:" + opcode);
-		console.log(register);
+		// console.log("0x" + pc.toString(16) + " op:" + opcode);
+		// console.log(register);
 		// console.log("___________");
 		// console.log(instruction)
 		// console.log(opcode);
@@ -596,7 +596,7 @@ var startProgram = async function ()
 		delayTimer = delayTimer > 0 ? delayTimer - 1 : 0;
 		await new Promise(function(resolve, reject)
 		{
-			setTimeout(resolve, 500);
+			setTimeout(resolve, 2);
 		});
 		//console.log(pc);
 	}
