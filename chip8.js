@@ -53,17 +53,16 @@ var initEventHandlers = function()
 	window.onkeydown = function(e)
 	{
 		let key = parseInt(e.key, 16);
-		if (!isNaN(key))
+		if (!isNaN(key) && (key >= 0) && (key < 16))
 		{
 			keys[key] = 1;
-			console.log(keys);
 		}
 		callback(e);
 	}
 	window.onkeyup = function(e)
 	{
 		let key = parseInt(e.key, 16);
-		if (!isNaN(key))
+		if (!isNaN(key) && (key >= 0) && (key < 16))
 		{
 			keys[key] = 0;
 		}
@@ -314,8 +313,9 @@ var parseInstruction = function(instruction) //instruction is 2 bytes, or 4 hexa
 
 var executeInstruction = async function (instruction, opcode, callback)
 {
-	//console.log(pc);
+	console.log(pc);
 	//console.log(opcode);
+	console.log("EXECUTING OP:" + opcode);
 	let X = (instruction & 0x0F00) >> 8; //second hex digit
 	let Y = (instruction & 0x00F0) >> 4; //third hex digit
 
@@ -362,17 +362,15 @@ var executeInstruction = async function (instruction, opcode, callback)
 		case 6: //4XNN skips the next instruction if VX does not equal NN
 		if (register[X] != (instruction & 0x00FF))
 		{
-			//alert("yeah");
 			pc += 2;
 		}
 		// console.log(register[X]);
 		// console.log(instruction);
-		console.log("regx");
-		console.log(X);
-		console.log(register[X]);
-		console.log(instruction);
-		console.log(register[X] != (instruction & 0x00FF));
-		//alert("uh huh");
+		// console.log("regx");
+		// console.log(X);
+		// console.log(register[X]);
+		// console.log(instruction);
+		// console.log(register[X] != (instruction & 0x00FF));
 		break;
 		
 		case 7: //5XNN skips the next instruction if VX equals VY
@@ -397,7 +395,6 @@ var executeInstruction = async function (instruction, opcode, callback)
 		
 		case 11: //8XY1 sets VX to VX | VY
 		register[X] |= register[Y];
-		pc += 2
 		break;
 		
 		case 12: //8XY2 sets VX to VX & VY
@@ -410,14 +407,7 @@ var executeInstruction = async function (instruction, opcode, callback)
 		
 		case 14: //8XY4 adds VY to VX
 		register[X] += register[Y];
-		if (register[X] > 255)
-		{
-			register[0xF] = 1;
-		}
-		else
-		{
-			register[0xF] = 0;
-		}
+		register[0xF] = register[X] > 255 ? 1 : 0;
 		register[X] &= 0x00FF;
 		break;
 		
@@ -439,7 +429,7 @@ var executeInstruction = async function (instruction, opcode, callback)
 		break;
 		
 		case 18: //8XYE stores the most significant bit of VX in VF then shifts VX to the left by 1
-		register[0xF] = register[X] & 128;
+		register[0xF] = (register[X] & 128) >> 7;
 		register[X] <<= 1;
 		register[X] &= 0x00FF;
 		break;
@@ -475,7 +465,7 @@ var executeInstruction = async function (instruction, opcode, callback)
 		break;
 		
 		case 25: //EXA1 Skips the next instruction if the key stored in VX isn't pressed
-		if (!keys[register[X]])
+		if (keys[register[X]] == 0)
 		{
 			pc += 2;
 		}
@@ -488,7 +478,6 @@ var executeInstruction = async function (instruction, opcode, callback)
 		case 27: //FX0A A key press is awaited, and then stored in VX.
 		await new Promise(resolve, reject)
 		{
-			alert("HELLO");
 			callback = function(e)
 			{
 				let key = parseInt(e.key, 16);
@@ -577,7 +566,7 @@ var startProgram = async function ()
 
 	while((pc >= 0x200) && (pc <= 0x1000) && (pc % 2 == 0)) //valid pc values
 	{
-		let instruction = (memory[pc] << 8) ^ memory[pc + 1];
+		let instruction = (memory[pc] << 8) | memory[pc + 1];
 		let opcode = parseInstruction(instruction);
 		// console.log("___________");
 		// console.log(instruction)
@@ -597,7 +586,7 @@ var startProgram = async function ()
 		delayTimer = delayTimer == 0 ? delayTimer - 1 : 0;
 		await new Promise(function(resolve, reject)
 		{
-			setTimeout(resolve, 2);
+			setTimeout(resolve, 1000/60);
 		});
 		//console.log(pc);
 	}
